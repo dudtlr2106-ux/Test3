@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>푸시알림 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔔</div>
+        <h1>푸시알림 테스트</h1>
+        <p>버튼을 누르면 알림, 소리, 진동이 작동합니다</p>
+        
+        <button id="testBtn">테스트 시작</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const testBtn = document.getElementById('testBtn');
+        const statusDiv = document.getElementById('status');
+
+        // 알림음 생성 (Beep 사운드)
+        function playSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // 진동
+        function vibrate() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200]);
+                return true;
+            }
+            return false;
+        }
+
+        // 푸시알림 권한 요청 및 표시
+        async function showNotification() {
+            if (!('Notification' in window)) {
+                return '이 브라우저는 알림을 지원하지 않습니다.';
+            }
+
+            let permission = Notification.permission;
+
+            if (permission === 'default') {
+                permission = await Notification.requestPermission();
+            }
+
+            if (permission === 'granted') {
+                const notification = new Notification('테스트 알림', {
+                    body: '알림이 정상적으로 작동하고 있습니다! 🎉',
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🔔</text></svg>',
+                    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🔔</text></svg>',
+                    vibrate: [200, 100, 200],
+                    requireInteraction: false
+                });
+
+                notification.onclick = function() {
+                    window.focus();
+                    notification.close();
+                };
+
+                return '알림이 전송되었습니다!';
+            } else if (permission === 'denied') {
+                return '알림 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.';
+            }
+        }
+
+        // 테스트 버튼 클릭
+        testBtn.addEventListener('click', async function() {
+            statusDiv.innerHTML = '';
+            statusDiv.className = 'status info';
+            statusDiv.textContent = '테스트 중...';
+
+            // 소리 재생
+            playSound();
+
+            // 진동
+            const vibrateSupported = vibrate();
+
+            // 푸시알림
+            const notificationMessage = await showNotification();
+
+            // 결과 표시
+            setTimeout(() => {
+                statusDiv.className = 'status success';
+                let message = '✅ ' + notificationMessage + '<br>';
+                message += '🔊 소리: 재생됨<br>';
+                message += vibrateSupported ? '📳 진동: 작동됨' : '📳 진동: 지원되지 않음';
+                statusDiv.innerHTML = message;
+            }, 500);
+        });
+
+        // 페이지 로드 시 알림 권한 상태 확인
+        window.addEventListener('load', function() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                statusDiv.className = 'status info';
+                statusDiv.textContent = '💡 처음 테스트 시 알림 권한을 허용해주세요.';
+            }
+        });
+    </script>
+</body>
+</html>
